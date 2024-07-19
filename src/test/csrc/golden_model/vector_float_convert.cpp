@@ -50,17 +50,18 @@ ElementOutput VGMFloatCvt::calculation_e16(ElementInput input) {
       output.result = f16_recip7(i2f16((uint16_t)input.src1)).v; break;
 
     // widen 16->32
-    case VFWCVT_XUFV: //f16->ui32 
-      output.result = f16_to_ui32(i2f16((uint16_t)input.src1), softfloat_roundingMode, true);  break; 
-    case VFWCVT_XFV:  //f16->i32  
+    case VFWCVT_XUFV: //f16->ui32 FCVT_WU_H
+      output.result = f16_to_ui32(i2f16((uint16_t)input.src1), softfloat_roundingMode, true);  break;
+    case VFWCVT_XFV:  //f16->i32  FCVT_W_H
       output.result = f16_to_i32(i2f16((uint16_t)input.src1), softfloat_roundingMode, true);  break; 
     case VFWCVT_FXUV: //ui16 -> f32
        output.result = ui32_to_f32((uint32_t)input.src1).v;  break;
     case VFWCVT_FXV:  //i16 -> f32 
       output.result = i32_to_f32((int32_t)(int16_t)input.src1).v;  break;
     case VFWCVT_FFV:  //f16 -> f32 
-      output.result = f16_to_f32(i2f16((uint16_t)input.src1)).v;
-      break;
+      output.result = f16_to_f32(i2f16((uint16_t)input.src1)).v;  break;
+    case FCVT_S_H:  //f16 -> f32 
+      output.result = f16_to_f32(i2f16((uint16_t)input.src1)).v;  break;
     case VFWCVT_RTZ_XUFV: //f16 -> ui32 trun 
       output.result = f16_to_ui32(i2f16((uint16_t)input.src1), softfloat_round_minMag, true);  break;
     case VFWCVT_RTZ_XFV: //f16 -> i32 trun  
@@ -74,11 +75,16 @@ ElementOutput VGMFloatCvt::calculation_e16(ElementInput input) {
       output.result = f16_to_ui8(i2f16((uint16_t)input.src1), softfloat_round_minMag, true);  break; 
     case VFNCVT_RTZ_XFW:  //f16 -> i8 trun
       output.result = f16_to_i8(i2f16((uint16_t)input.src1), softfloat_round_minMag, true);  break; 
+    case FCVT_D_H:  //f16->f64
+      output.result = f16_to_f64(i2f16((uint16_t)input.src1)).v;  break;
+    case FCVT_L_H:  //f16->i64
+      output.result = f16_to_i64(i2f16((uint16_t)input.src1), softfloat_roundingMode, true);  break; 
+    case FCVT_LU_H:  //f16->ui64
+      output.result = f16_to_ui64(i2f16((uint16_t)input.src1), softfloat_roundingMode, true);  break;
     default:
       printf("VFConvert Unsupported fuOpType %d\n", input.fuOpType);
       exit(1);
   }
-  
   output.fflags = softfloat_exceptionFlags & 0x1f;
   if (verbose) { display_calculation(typeid(this).name(), __func__, input, output); }
   return output;
@@ -144,6 +150,20 @@ ElementOutput VGMFloatCvt::calculation_e32(ElementInput input) {
       output.result = f32_to_ui16(i2f32((uint32_t)input.src1), softfloat_round_minMag, true);  break; 
     case VFNCVT_RTZ_XFW:  //f32 -> i16 trun
       output.result = f32_to_i16(i2f32((uint32_t)input.src1), softfloat_round_minMag, true);  break; 
+    case FCVT_H_W:  // i32 ->f16
+      output.result = i32_to_f16((uint32_t)input.src1).v;  break;
+    case FCVT_H_WU:  // ui32 ->f16
+      output.result = ui32_to_f16((uint32_t)input.src1).v;  break;
+    case FCVT_S_W:  // i32 ->f32
+      output.result = i32_to_f32((uint32_t)input.src1).v;  break;
+    case FCVT_S_WU:  // ui32 ->f32
+      output.result = ui32_to_f32((uint32_t)input.src1).v;  break;
+    case FCVT_D_W:  // i32 ->f64
+      output.result = i32_to_f64((uint32_t)input.src1).v;  break;
+    case FCVT_D_WU:  // ui32 ->f64
+      output.result = ui32_to_f64((uint32_t)input.src1).v;  break;
+    case FCVT_H_S:  // f32 ->f16
+      output.result = f32_to_f16(i2f32((uint32_t)input.src1)).v;  break;
     default:
       printf("VFConvert Unsupported fuOpType %d\n", input.fuOpType);
       exit(1);
@@ -175,7 +195,6 @@ ElementOutput VGMFloatCvt::calculation_e64(ElementInput input) {
       output.result = f64_to_i64(i2f64((uint64_t)input.src1), softfloat_round_minMag, true);
       break;
 
-
     case VFRSQRT7: // f64->f64
       output.result = f64_rsqrte7(i2f64((uint64_t)input.src1)).v;
       break;
@@ -202,6 +221,23 @@ ElementOutput VGMFloatCvt::calculation_e64(ElementInput input) {
       output.result = f64_to_ui32(i2f64((uint64_t)input.src1), softfloat_round_minMag, true);  break;
     case VFNCVT_RTZ_XFW:  //f64 -> i32 trun
       output.result = f64_to_i32(i2f64((uint64_t)input.src1), softfloat_round_minMag, true);  break;
+    //cross       
+    case FCVT_H_D:  //f64 -> f16  
+      output.result = f64_to_f16(i2f64((uint64_t)input.src1)).v;  break;
+    //i64/ui64->f64/f32/f16
+    case FCVT_H_L:  // i64 ->f16
+      output.result = i64_to_f16((uint64_t)input.src1).v;  break;
+    case FCVT_H_LU:  // ui64 ->f16
+      output.result = ui64_to_f16((uint64_t)input.src1).v;  break;
+    case FCVT_S_L:  // i64 ->f32
+      output.result = i64_to_f32((uint64_t)input.src1).v;  break;
+    case FCVT_S_LU:  // ui64 ->f32
+      output.result = ui64_to_f32((uint64_t)input.src1).v;  break;
+    case FCVT_D_L:  // i64 ->f64
+      output.result = i64_to_f64((uint64_t)input.src1).v;  break;
+    case FCVT_D_LU:  // ui64 ->f64
+      output.result = ui64_to_f64((uint64_t)input.src1).v;  break;
+    //i32/ui32->f64/f32/f16
     default:
       printf("VFConvert Unsupported fuOpType %d\n", input.fuOpType);
       exit(1);

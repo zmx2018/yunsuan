@@ -91,7 +91,7 @@ Emulator::Emulator(int argc, const char *argv[]):
     tfp->open(waveform_filename(now,"_dump_wave"));
   }
 #endif
-  
+
   test_driver.set_default_value(dut_ptr);
   reset_ncycles(10);
 }
