@@ -43,15 +43,13 @@ ElementOutput VGMFloatCvt::calculation_e16(ElementInput input) {
       output.result = f16_to_ui16(i2f16((uint16_t)input.src1), softfloat_round_minMag, true);  break; 
     case VFCVT_RTZ_XFV:  // f16->Ui16 trun
       output.result = f16_to_i16(i2f16((uint16_t)input.src1), softfloat_round_minMag, true);  break;
-
     case VFRSQRT7: // f16->f16
       output.result = f16_rsqrte7(i2f16((uint16_t)input.src1)).v; break;
     case VFREC7:  // f16->f16
       output.result = f16_recip7(i2f16((uint16_t)input.src1)).v; break;
-
     // widen 16->32
     case VFWCVT_XUFV: //f16->ui32 
-      output.result = f16_to_ui32(i2f16((uint16_t)input.src1), softfloat_roundingMode, true);  break; 
+      output.result = f16_to_ui32(i2f16((uint16_t)input.src1), softfloat_roundingMode, true);  break;
     case VFWCVT_XFV:  //f16->i32  
       output.result = f16_to_i32(i2f16((uint16_t)input.src1), softfloat_roundingMode, true);  break; 
     case VFWCVT_FXUV: //ui16 -> f32
@@ -59,8 +57,7 @@ ElementOutput VGMFloatCvt::calculation_e16(ElementInput input) {
     case VFWCVT_FXV:  //i16 -> f32 
       output.result = i32_to_f32((int32_t)(int16_t)input.src1).v;  break;
     case VFWCVT_FFV:  //f16 -> f32 
-      output.result = f16_to_f32(i2f16((uint16_t)input.src1)).v;
-      break;
+      output.result = f16_to_f32(i2f16((uint16_t)input.src1)).v;  break;
     case VFWCVT_RTZ_XUFV: //f16 -> ui32 trun 
       output.result = f16_to_ui32(i2f16((uint16_t)input.src1), softfloat_round_minMag, true);  break;
     case VFWCVT_RTZ_XFV: //f16 -> i32 trun  
@@ -78,7 +75,6 @@ ElementOutput VGMFloatCvt::calculation_e16(ElementInput input) {
       printf("VFConvert Unsupported fuOpType %d\n", input.fuOpType);
       exit(1);
   }
-  
   output.fflags = softfloat_exceptionFlags & 0x1f;
   if (verbose) { display_calculation(typeid(this).name(), __func__, input, output); }
   return output;
@@ -102,12 +98,10 @@ ElementOutput VGMFloatCvt::calculation_e32(ElementInput input) {
       output.result = f32_to_ui32(i2f32((uint32_t)input.src1), softfloat_round_minMag, true);  break; 
     case VFCVT_RTZ_XFV:  // f32->Ui32 trun
       output.result = f32_to_i32(i2f32((uint32_t)input.src1), softfloat_round_minMag, true);  break; 
-
     case VFRSQRT7: // f32->f32
       output.result = f32_rsqrte7(i2f32((uint32_t)input.src1)).v; break;
     case VFREC7:  // f32->f32
       output.result = f32_recip7(i2f32((uint32_t)input.src1)).v; break;
-
     // widen 32 -> 64
     case VFWCVT_XUFV: //f32->ui64 
       output.result = f32_to_ui64(i2f32((uint32_t)input.src1), softfloat_roundingMode, true);  break; 
@@ -117,10 +111,8 @@ ElementOutput VGMFloatCvt::calculation_e32(ElementInput input) {
       output.result = ui32_to_f64((uint32_t)input.src1).v;  break; 
     case VFWCVT_FXV:  //i32 -> f64 
       output.result = i32_to_f64((uint32_t)input.src1).v;  break; 
-    case VFWCVT_FFV:  //f32 -> f64 
-      output.result = f32_to_f64(i2f32((uint32_t)input.src1)).v;   
-      break; 
-
+    case VFWCVT_FFV:  //f32 -> f64 vecter
+        output.result = f32_to_f64(i2f32((uint32_t)input.src1)).v;  break;  
     case VFWCVT_RTZ_XUFV: //f32 -> ui64 trun 
       output.result = f32_to_ui64(i2f32((uint32_t)input.src1), softfloat_round_minMag, true);  break;
     case VFWCVT_RTZ_XFV: //f32 -> i64 trun  
@@ -167,22 +159,15 @@ ElementOutput VGMFloatCvt::calculation_e64(ElementInput input) {
     case VFCVT_FXUV: //ui64-> f64
       output.result = ui64_to_f64((uint64_t)input.src1).v;  break;
     case VFCVT_FXV: //i64 -> f64
-      output.result = i64_to_f64((uint64_t)input.src1).v;  
-      break;
+      output.result = i64_to_f64((uint64_t)input.src1).v;  break;
     case VFCVT_RTZ_XUFV: // f64->Ui64 trun
       output.result = f64_to_ui64(i2f64((uint64_t)input.src1), softfloat_round_minMag, true);  break; 
     case VFCVT_RTZ_XFV:  // f64->Ui64 trun
-      output.result = f64_to_i64(i2f64((uint64_t)input.src1), softfloat_round_minMag, true);
-      break;
-
-
+      output.result = f64_to_i64(i2f64((uint64_t)input.src1), softfloat_round_minMag, true);break;
     case VFRSQRT7: // f64->f64
-      output.result = f64_rsqrte7(i2f64((uint64_t)input.src1)).v;
-      break;
+      output.result = f64_rsqrte7(i2f64((uint64_t)input.src1)).v;break;
     case VFREC7:  // f64->f64
-      output.result = f64_recip7(i2f64((uint64_t)input.src1)).v; 
-      break;
-    
+      output.result = f64_recip7(i2f64((uint64_t)input.src1)).v; break;
     // norrow 64->32
     case VFNCVT_XUFW: // f64 ->ui32
       output.result = f64_to_ui32(i2f64((uint64_t)input.src1), softfloat_roundingMode, true);  break;
