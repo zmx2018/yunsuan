@@ -29,9 +29,10 @@ object VPUTestFuType { // only use in test, difftest with xs
   def viaf = "b0000_0101".U(8.W)
   def vid = "b0000_0110".U(8.W)
   def vcvt= "b0000_0111".U(8.W)
+  def fcvt= "b0000_1000".U(8.W)
 
   def unknown(typ: UInt) = {
-    (typ > 7.U)
+    (typ > 8.U)
   }
 }
 
@@ -104,7 +105,8 @@ class SimTop() extends VPUTestModule {
       VPUTestFuType.vperm -> VPERM_latency.U,
       VPUTestFuType.viaf -> VIAF_latency.U,
       VPUTestFuType.vid -> VID_latency.U,
-      VPUTestFuType.vcvt -> VCVT_latency.U
+      VPUTestFuType.vcvt -> VCVT_latency.U,
+      VPUTestFuType.fcvt -> VCVT_latency.U
     )) // fuType --> latency, spec case for div
     assert(!VPUTestFuType.unknown(io.in.bits.fuType))
   }
@@ -352,7 +354,8 @@ class SimTop() extends VPUTestModule {
     VPUTestFuType.vperm -> vperm_result,
     VPUTestFuType.viaf -> viaf_result,
     VPUTestFuType.vid -> vid_result,
-    VPUTestFuType.vcvt -> vcvt_result
+    VPUTestFuType.vcvt -> vcvt_result,
+    VPUTestFuType.fcvt -> vcvt_result
   ))
 }
 

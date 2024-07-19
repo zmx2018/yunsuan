@@ -44,7 +44,6 @@ private:
   VGMIntegerDividier vid;
   VGMFloatCvt vcvt;
 
-
 public:
   TestDriver();
   ~TestDriver();

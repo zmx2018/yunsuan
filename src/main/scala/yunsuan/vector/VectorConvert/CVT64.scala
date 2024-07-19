@@ -11,7 +11,7 @@ class CVT64(width: Int = 64) extends CVT(width){
 
   //parameter
   val fpParamMap = Seq(f16, f32, f64)
-  val biasDeltaMap = Seq(f32.bias - f16.bias, f64.bias - f32.bias)
+  val biasDeltaMap = Seq(f32.bias - f16.bias, f64.bias - f32.bias, f64.bias - f16.bias)
   val intParamMap = (0 to 3).map(i => (1 << i) * 8)
   val widthExpAdder = 13 // 13bits is enough
 
@@ -25,6 +25,11 @@ class CVT64(width: Int = 64) extends CVT(width){
   val isNarrow = opType(4) && !opType(3)
   val inIsFpNext = opType.head(1).asBool
   val outIsFpNext = opType.tail(1).head(1).asBool
+  val outIsF16 = outIsFpNext && output1H(1)
+  val outIsF64 = outIsFpNext && output1H(3)
+  val isCrossHigh = opType(4) && opType(3) && outIsF64
+  val isCrossLow = opType(4) && opType(3) && outIsF16
+
   val hasSignIntNext = opType(0).asBool
 
   val s0_outIsF64 =  outIsFpNext && output1H(3)
@@ -110,9 +115,10 @@ class CVT64(width: Int = 64) extends CVT(width){
   val isSubnormalRec1Next = isSubnormalSrcNext && !fracSrc.head(1) && fracSrc.tail(1).head(1).asBool
   val isSubnormalRec2Next = isSubnormalSrcNext && !fracSrc.head(2).orR
 
-  // type int->fp, fp->fp widen, fp->fp Narrow, fp->int
-  val (isInt2FpNext, isFpWidenNext, isFpNarrowNext, isFp2IntNext) =
-    (!inIsFpNext, inIsFpNext && outIsFpNext && isWiden, inIsFpNext && outIsFpNext && isNarrow, !outIsFpNext)
+  // type int->fp, fp->fp widen, fp->fp Narrow, fp->int, fp16->fp64
+  val (isInt2FpNext, isFpWidenNext, isFpNarrowNext, isFp2IntNext, isFpCrossHighNext, isFpCrossLowNext) =
+    (!inIsFpNext, inIsFpNext && outIsFpNext && isWiden, inIsFpNext && outIsFpNext && isNarrow,
+      !outIsFpNext, inIsFpNext && outIsFpNext && isCrossHigh, inIsFpNext && outIsFpNext && isCrossLow)
 
   //contral sign to cycle1
   val expNotZeroSrc = RegEnable(expNotZeroSrcNext, false.B, fire)
@@ -141,6 +147,8 @@ class CVT64(width: Int = 64) extends CVT(width){
   val isFpNarrow = RegEnable(isFpNarrowNext, false.B, fire)
   val isEstimate7 = RegEnable(isEstimate7Next, false.B, fire)
   val isFp2Int = RegEnable(isFp2IntNext, false.B, fire)
+  val isFpCrossHigh = RegEnable(isFpCrossHighNext, false.B, fire)
+  val isFpCrossLow = RegEnable(isFpCrossLowNext, false.B, fire)
 
   // for fpnarrow sub
   val trunSticky = RegEnable(fracSrc.tail(f32.fracWidth).orR, false.B, fire)
@@ -207,19 +215,21 @@ class CVT64(width: Int = 64) extends CVT(width){
    * cycle: 1
    */
 
-  val type1H = Cat(isInt2FpNext, isFpWidenNext, isFpNarrowNext, isEstimate7Next, isFp2IntNext).asBools.reverse
+  val type1H = Cat(isInt2FpNext, isFpWidenNext, isFpCrossHighNext, isFpNarrowNext || isFpCrossLowNext, isEstimate7Next,
+    isFp2IntNext).asBools.reverse
   val expAdderIn0Next = Wire(UInt(widthExpAdder.W)) //13bits is enough
   val expAdderIn1Next = Wire(UInt(widthExpAdder.W))
   val expAdderIn0 = RegEnable(expAdderIn0Next, fire)
   val expAdderIn1 = RegEnable(expAdderIn1Next, fire)
 
-  val biasDelta = Mux1H(float1HOutNext.tail(1), biasDeltaMap.map(delta => delta.U))
+  val biasDelta = Mux1H(float1HOutNext.tail(1), biasDeltaMap.take(2).map(delta => delta.U))
   val bias =  Mux1H(float1HSrcNext, fpParamMap.map(fp => fp.bias.U))
   val minusExp = extend((~(false.B ## Mux1H(
-    Cat(isInt2FpNext || isFpWidenNext, isFpNarrowNext, isEstimate7Next, isFp2IntNext).asBools.reverse,
+    Cat(isInt2FpNext || isFpWidenNext || isFpCrossHighNext, isFpNarrowNext, isFpCrossLowNext, isEstimate7Next, isFp2IntNext).asBools.reverse,
     Seq(
       leadZerosNext,
       biasDelta,
+      biasDeltaMap(2).U,
       expSrcNext,
       bias
     )))).asUInt
@@ -227,7 +237,8 @@ class CVT64(width: Int = 64) extends CVT(width){
 
   expAdderIn0Next := Mux1H(type1H, Seq(
       Mux1H(float1HOutNext, fpParamMap.map(fp => (fp.bias + 63).U)),
-      Mux1H(float1HOutNext.head(2), biasDeltaMap.map(delta => delta.U)),
+      Mux1H(float1HOutNext.head(2), biasDeltaMap.take(2).map(delta => delta.U)),
+      biasDeltaMap(2).U,
       Mux(isSubnormalSrcNext, false.B ## 1.U, false.B ## expSrcNext),
       Mux1H(float1HOutNext, fpParamMap.map(fp => Mux(isRecNext, (2 * fp.bias - 1).U, (3 * fp.bias - 1).U))),
       Mux(isSubnormalSrcNext, false.B ## 1.U, false.B ## expSrcNext)
@@ -235,7 +246,7 @@ class CVT64(width: Int = 64) extends CVT(width){
   )
 
   expAdderIn1Next := Mux1H(
-    Cat(isInt2FpNext || isFpNarrowNext || isFp2IntNext, isFpWidenNext, isEstimate7Next).asBools.reverse,
+    Cat(isInt2FpNext || isFpNarrowNext || isFp2IntNext || isFpCrossLowNext, isFpWidenNext || isFpCrossHighNext, isEstimate7Next).asBools.reverse,
     Seq(
       minusExp,
       Mux(isSubnormalSrcNext, minusExp, expSrcNext),
@@ -278,7 +289,7 @@ class CVT64(width: Int = 64) extends CVT(width){
   val fracValueSrc = (expNotZeroSrcNext && !expIsOnesSrcNext) ## fracSrc
   val shamtInNext = fracValueSrc ## 0.U(11.W) ## false.B  //fp Narrow & fp->int
   val shamtWidth = Mux(!outIsFpNext, Mux1H(float1HSrcNext, fpParamMap.map(fp => (63+fp.bias).U)),
-    Mux1H(float1HOutNext.tail(1), biasDeltaMap.map(delta => (delta + 1).U))
+    Mux(isCrossLow, (biasDeltaMap(2) + 1).U, Mux1H(float1HOutNext.tail(1), biasDeltaMap.take(2).map(delta => (delta + 1).U)))
     ) - expSrcNext
   val shamtNext = Mux(shamtWidth >= 65.U, 65.U, shamtWidth)
 
@@ -296,7 +307,7 @@ class CVT64(width: Int = 64) extends CVT(width){
    * cycle: 1
    */
   val rounderMapIn = Wire(UInt(64.W))
-  rounderMapIn := Mux(isFpNarrow, fracSrcLeft, shiftLeft)
+  rounderMapIn := Mux(isFpNarrow || isFpCrossLow, fracSrcLeft, shiftLeft)
 
   val rounderMap =
     fpParamMap.map(fp => Seq(
@@ -390,8 +401,8 @@ class CVT64(width: Int = 64) extends CVT(width){
     val int2FpResultMap: Seq[UInt] = fpParamMap.map(fp => Mux1H(result1H.asBools.reverse, int2FpResultMapGen(fp)))
     resultNext := Mux1H(float1HOut, int2FpResultMap)
 
-  }.elsewhen(isFpWiden){
-    /** fp -> fp widen
+  }.elsewhen(isFpWiden || isFpCrossHigh){
+    /** fp -> fp widen/ fp16 -> fp64 cross high
      */
     def fpWidenResultMapGen(fp: FloatFormat): Seq[UInt] = {
       VecInit((0 to 2).map {
@@ -416,8 +427,8 @@ class CVT64(width: Int = 64) extends CVT(width){
     val fpwidenResultMap: Seq[UInt] = Seq(f32, f64).map(fp => Mux1H(result1H.asBools.reverse, fpWidenResultMapGen(fp)))
     resultNext := Mux1H(float1HOut.head(2), fpwidenResultMap)
 
-  }.elsewhen(isFpNarrow){
-    /** fp -> fp Narrow
+  }.elsewhen(isFpNarrow || isFpCrossLow){
+    /** fp -> fp Narrow / fp64 -> fp16 cross low
      * note: IEEE754 uf：exp in (-b^emin, b^emin), after rounding(RiscV!!!)
      * note: IEEE754 uf：exp in (-b^emin, b^emin), before rounding(other)
      */

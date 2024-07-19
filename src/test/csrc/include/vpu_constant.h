@@ -22,11 +22,14 @@ extern "C"{
 #define VIntegerALUV2 (5)
 #define VIntegerDivider (6)
 #define VFloatCvt (7)
+#define FloatCvt (8)
 // #define ALL_FUTYPES {VFloatAdder,VFloatFMA,VFloatDivider,VIntegerALU,VPermutation,VIntegerALUV2,VIntegerDivider,VFloatCvt}
 
 //will be delated
-#define FU_NUM 6 
-#define ALL_FUTYPES {VFloatFMA,VFloatDivider,VIntegerALU,VPermutation,VIntegerDivider,VFloatCvt}
+// #define FU_NUM 7 
+// #define ALL_FUTYPES {VFloatFMA,VFloatDivider,VIntegerALU,VPermutation,VIntegerDivider,VFloatCvt,FloatCvt}
+#define FU_NUM 1 
+#define ALL_FUTYPES {FloatCvt}
 
 #define INT_ROUNDING(result, xrm, gb) \
   do { \
@@ -289,6 +292,25 @@ extern "C"{
   #define VFREC7           (binstoi("11100001")) 
 
 
+  
+  #define FCVT_S_H         (binstoi("11001000"))
+  #define FCVT_D_H         (binstoi("11011000"))
+  #define FCVT_W_H         (binstoi("10001001"))//
+  #define FCVT_WU_H        (binstoi("10001000"))//
+  #define FCVT_L_H         (binstoi("10011001"))
+  #define FCVT_LU_H        (binstoi("10011000"))
+  
+  #define FCVT_H_S         (binstoi("11010000"))
+  #define FCVT_H_D         (binstoi("11011000"))
+  #define FCVT_H_W         (binstoi("01010001"))
+  #define FCVT_H_WU        (binstoi("01010000"))
+  #define FCVT_H_L         (binstoi("01011001"))
+  #define FCVT_H_LU        (binstoi("01011000"))
+
+
+
+
+
 
   #define VFCVT_ALL_OPTYPES {VFCVT_XUFV, VFCVT_XFV, VFCVT_FXUV, VFCVT_FXV, VFCVT_RTZ_XUFV, VFCVT_RTZ_XFV, \
   VFWCVT_XUFV, VFWCVT_XFV, VFWCVT_FXUV, VFWCVT_FXV, VFWCVT_FFV, VFWCVT_RTZ_XUFV, VFWCVT_RTZ_XFV, \
@@ -306,6 +328,17 @@ extern "C"{
   #define VFCVT_64_NUM  8
   #define VFCVT_64_OPTYPES {VFCVT_XUFV,VFCVT_XFV,VFCVT_FXUV,VFCVT_FXV,VFCVT_RTZ_XUFV,VFCVT_RTZ_XFV,VFRSQRT7,VFREC7}
 
+
+  // #define FCVT_16_NUM  11
+  // #define FCVT_16_OPTYPES {FCVT_H_S,FCVT_S_H,FCVT_D_H,FCVT_H_W,FCVT_W_H,FCVT_H_WU,FCVT_WU_H,FCVT_L_H,FCVT_H_L,FCVT_LU_H,FCVT_H_LU}
+  #define FCVT_16_NUM  9
+  #define FCVT_16_OPTYPES {FCVT_H_S,FCVT_S_H,FCVT_D_H,FCVT_H_W,FCVT_W_H,FCVT_H_WU,FCVT_WU_H,FCVT_L_H,FCVT_LU_H}
+
+  // #define FCVT_16_NUM  7
+  // #define FCVT_16_OPTYPES {FCVT_H_S,FCVT_S_H,FCVT_D_H,FCVT_W_H,FCVT_WU_H,FCVT_L_H,FCVT_LU_H}
+
+  #define FCVT_64_NUM  1
+  #define FCVT_64_OPTYPES {FCVT_H_D}
 
 // pre-compile stoi
 constexpr uint8_t binstoi(const char str[]) {

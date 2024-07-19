@@ -56,6 +56,7 @@ class VGMFloatCvt : public VGMFloatBase {
 };
 
 
+
 class VGMFloatFMA : public VGMFloatBase {
   virtual ElementOutput calculation_e16(ElementInput input);
   virtual ElementOutput calculation_e32(ElementInput input);

@@ -73,11 +73,81 @@ VecOutput VPUGoldenModel::get_expected_output(VecInput input) {
       }
     }
   }
+  else if(input.fuType == FloatCvt){
+    if(widenNorrow == 1){ //widen fp16->fp32/int32/uint32
+      half_number = half_number >> 1;
+      result_shift_len = result_shift_len << 1;
+      for(int i = 0; i < number; i++) {
+        ElementInput element = select_element(input, i);
+        // printf("number = %d\n",number);
+        // printf("element.src1 = %lx,element.src2 = %lx\n",element.src1,element.src2);
+        switch (sew) {
+          case 1: output_part[i] = calculation_e16(element); mask = 0xFFFFFFFF; break;
+          case 2: output_part[i] = calculation_e32(element); mask = 0xFFFFFFFFFFFFFFFF; break;
+          default:
+            printf("VPU Golden Modle, bad sew %d\n", input.sew);
+            exit(1);
+        }
+        if (output_part[i].fflags > 0x1f) {
+          printf("Bad fflags of %x, check golden model e8 %d\n", output_part[i].fflags, i);
+          exit(1);
+        }
+      }
+    }else if(widenNorrow == 2){//narrow fp32/int32/uint32->fp16
+      half_number = half_number >> 1;
+      for(int i = 0; i < number/2; i++) {
+        ElementInput element = select_element(input, i);
+        // printf("number/2 = %d\n",number/2);
+        // printf("half_number = %d\n",half_number);
+        // printf("element.src1 = %lx,element.src2 = %lx\n",element.src1,element.src2);
+        switch (sew) {
+          case 0: output_part[i] = calculation_e16(element); mask = 0xFF; break;
+          case 1: output_part[i] = calculation_e32(element); mask = 0xFFFF; break;
+          case 2: output_part[i] = calculation_e64(element); mask = 0xFFFFFFFF; break;
+          default:
+            printf("VPU Golden Modle, bad sew %d\n", input.sew);
+            exit(1);
+        }
+        if (output_part[i].fflags > 0x1f) {
+          printf("Bad fflags of %x, check golden model e8 %d\n", output_part[i].fflags, i);
+          exit(1);
+        }
+      }
+    }else if(widenNorrow == 3){
+      if(sew == 1){//cross high fp16->fp64/int64/uint64
+        half_number = half_number >> 2;
+        for(int i = 0; i < number; i++) {
+          ElementInput element = select_element(input, i);
+          // printf("number = %d\n",number);
+          // printf("element.src1 = %lx,element.src2 = %lx\n",element.src1,element.src2);
+          output_part[i] = calculation_e16(element); 
+          mask = 0xFFFFFFFFFFFFFFFF;
+          if (output_part[i].fflags > 0x1f) {
+            printf("Bad fflags of %x, check golden model e8 %d\n", output_part[i].fflags, i);
+            exit(1);
+          }
+        }
+      }else if(sew == 3){//corss low  fp64->fp16
+        // half_number = half_number >> 1;
+        for(int i = 0; i < number; i++) {
+          ElementInput element = select_element(input, i);
+          // printf("number = %d\n",number);
+          // printf("element.src1 = %lx,element.src2 = %lx\n",element.src1,element.src2);
+          output_part[i] = calculation_e64(element); 
+          mask = 0xFFFF;
+          if (output_part[i].fflags > 0x1f) {
+            printf("Bad fflags of %x, check golden model e8 %d\n", output_part[i].fflags, i);
+            exit(1);
+          }
+        }
+      }
+    }
+  }
   else{
     for(int i = 0; i < number; i++) {
       ElementInput element = select_element(input, i);
       switch (sew) {
-        case 0: output_part[i] = calculation_e8(element); mask = 0xFF; break;
+        case 0: output_part[i] = calculation_e8(element);  mask = 0xFF; break;
         case 1: output_part[i] = calculation_e16(element); mask = 0xFFFF; break;
         case 2: output_part[i] = calculation_e32(element); mask = 0xFFFFFFFF; break;
         case 3: output_part[i] = calculation_e64(element); mask = 0xFFFFFFFFFFFFFFFF; break;
@@ -99,13 +169,34 @@ VecOutput VPUGoldenModel::get_expected_output(VecInput input) {
       if(input.fuType == VIntegerDivider) {
         output.result[i] += (uint64_t)(output_part[i*half_number+j].result&mask) << (j*result_shift_len);
         output.fflags[i] += (uint32_t)output_part[i*half_number+j].fflags << j;
-      } else if(input.fuType == VFloatCvt){
+      }else if(input.fuType == VFloatCvt){
         if(widenNorrow == 1){//widen
           output.result[i] += ((uint64_t)output_part[(i<<1)*half_number+j].result&mask) << (j*result_shift_len);
           output.fflags[i] += (uint32_t)output_part[(i<<1)*half_number+j].fflags << (j*5);
         }else {//single or norrow
           output.result[i] += ((uint64_t)output_part[i*half_number+j].result&mask) << (j*result_shift_len);
           output.fflags[i] += (uint32_t)output_part[i*half_number+j].fflags << (j*5);
+        }
+      }else if(input.fuType == FloatCvt){
+        if(widenNorrow == 1){//widen
+          // printf("half_number = %d\n",half_number);
+          // printf("result_shift_len = %d\n",result_shift_len);
+          output.result[i] += ((uint64_t)output_part[(i<<1)*half_number+j].result&mask) << (j*result_shift_len);
+          output.fflags[i] += (uint32_t)output_part[(i<<1)*half_number+j].fflags << (j*5);
+          // printf("output.result[%d] = %lx\n",i,output.result[i]);
+        }else if(widenNorrow == 2 || widenNorrow == 0) {//single or norrow
+          output.result[i] += ((uint64_t)output_part[i*half_number+j].result&mask) << (j*result_shift_len);
+          output.fflags[i] += (uint32_t)output_part[i*half_number+j].fflags << (j*5);
+        }else if(widenNorrow == 3){//cross
+          if(sew == 1){//cross high
+            output.result[i] += ((uint64_t)output_part[(i<<2)*half_number+j].result&mask) << (j*result_shift_len);
+            output.fflags[i] += (uint32_t)output_part[(i<<2)*half_number+j].fflags << (j*5);
+            // printf("output.result[%d] = %lx\n",i,output.result[i]);
+          }else if(sew == 3){//cross low fp64->fp16
+            output.result[i] += ((uint64_t)output_part[i*half_number+j].result&mask) << (j*result_shift_len);
+            output.fflags[i] += (uint32_t)output_part[i*half_number+j].fflags << (j*5);
+            // printf("output.result[%d] = %lx\n",i,output.result[i]);
+          }
         }
       }else {
         output.result[i] += ((uint64_t)output_part[i*half_number+j].result) << (j*result_shift_len);
@@ -174,7 +265,7 @@ ElementInput VPUGoldenModel::select_element(VecInput input, int idx) {
       printf("VPU Golden Modle, not support widen fuType %d\n", input.fuType);
       exit(1);
     }
-  }else if((input.fuType == VFloatCvt) && (((input.fuOpType >>3) & 0X3) == 2)){  //cvt norrow select 2sew
+  }else if((input.fuType == VFloatCvt) && (((input.fuOpType >>3) & 0X3) == 2) ){  //cvt norrow select 2sew
     switch (sew) {
       case 0:
         element.src1 = input.is_frs2 ? (uint64_t)input64->src1[0] : (uint64_t)input16->src1[idx];
@@ -195,7 +286,33 @@ ElementInput VPUGoldenModel::select_element(VecInput input, int idx) {
         printf("VPU Golden Modle, bad sew %d\n", input.sew);
         exit(1);
     }
-  }else {
+  }else if((input.fuType == FloatCvt) && (((input.fuOpType >>3) & 0X3) == 2) ){  //cvt norrow select 2sew
+    switch (sew) {
+      case 0:
+        element.src1 = input.is_frs2 ? (uint64_t)input64->src1[0] : (uint64_t)input16->src1[idx];
+        element.src2 = input.is_frs1 ? (uint64_t)input64->src2[0] : (uint64_t)input16->src2[idx];
+        element.src3 = (uint64_t)input16->src3[idx];
+        break;
+      case 1:
+        element.src1 = input.is_frs2 ? (uint64_t)input64->src1[0] : (uint64_t)input32->src1[idx];
+        element.src2 = input.is_frs1 ? (uint64_t)input64->src2[0] : (uint64_t)input32->src2[idx];
+        element.src3 = (uint64_t)input32->src3[idx];
+        break;
+      case 2:
+        element.src1 = input.is_frs2 ? (uint64_t)input64->src1[0] : (uint64_t)input64->src1[idx];
+        element.src2 = input.is_frs1 ? (uint64_t)input64->src2[0] : (uint64_t)input64->src2[idx];
+        element.src3 = (uint64_t)input64->src3[idx];
+        break;        
+      default:
+        printf("VPU Golden Modle, bad sew %d\n", input.sew);
+        exit(1);
+    }
+  }else if((input.fuType == FloatCvt) && (((input.fuOpType>>3) & 0x3) == 3) && (sew == 3)){//f64->f16
+      element.src1 = input.is_frs2 ? (uint64_t)input64->src1[0] : (uint64_t)input64->src1[idx];
+      element.src2 = input.is_frs1 ? (uint64_t)input64->src2[0] : (uint64_t)input64->src2[idx];
+      element.src3 = (uint64_t)input64->src3[idx];
+  }
+  else {
     switch (sew) {
       case 0:
         element.src1 = (uint64_t)input8->src1[idx];

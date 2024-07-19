@@ -22,7 +22,6 @@ class VectorCvt(xlen :Int) extends Module{
   val io = IO(new VectorCvtIO(xlen))
   val (fire, src, opType, sew, rm, isFpToVecInst) = (io.fire, io.src, io.opType, io.sew, io.rm, io.isFpToVecInst)
   val widen = opType(4, 3) // 0->single 1->widen 2->norrow => width of result
-
   // input width 8， 16， 32， 64
   val input1H = Wire(UInt(4.W))
   input1H := chisel3.util.experimental.decode.decoder(
@@ -40,6 +39,9 @@ class VectorCvt(xlen :Int) extends Module{
         BitPat("b10_00") -> BitPat("b0010"), // 16
         BitPat("b10_01") -> BitPat("b0100"), // 32
         BitPat("b10_10") -> BitPat("b1000"), // 64
+
+        BitPat("b11_01") -> BitPat("b0010"), // f16->f64/i64/ui64
+        BitPat("b11_11") -> BitPat("b1000"), // f64->f16
       ),
       BitPat("b0000")
     )
@@ -62,6 +64,9 @@ class VectorCvt(xlen :Int) extends Module{
         BitPat("b10_00") -> BitPat("b0001"), // 8
         BitPat("b10_01") -> BitPat("b0010"), // 16
         BitPat("b10_10") -> BitPat("b0100"), // 32
+
+        BitPat("b11_11") -> BitPat("b0010"), // f64->f16
+        BitPat("b11_01") -> BitPat("b1000"), // f16->f64/i64/ui64
       ),
       BitPat("b0000")
     )
