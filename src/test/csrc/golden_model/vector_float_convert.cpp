@@ -150,13 +150,18 @@ ElementOutput VGMFloatCvt::calculation_e32(ElementInput input) {
       output.result = f32_to_ui16(i2f32((uint32_t)input.src1), softfloat_round_minMag, true);  break; 
     case VFNCVT_RTZ_XFW:  //f32 -> i16 trun
       output.result = f32_to_i16(i2f32((uint32_t)input.src1), softfloat_round_minMag, true);  break; 
-    
-    case FCVT_H_WU: // ui32 ->f16
-     output.result = ui32_to_f16((uint32_t)input.src1).v;  break;
     case FCVT_H_W:  // i32 ->f16
       output.result = i32_to_f16((uint32_t)input.src1).v;  break;
-    case FCVT_H_S:  // f32 ->f16
-      output.result = f32_to_f16(i2f32((uint32_t)input.src1)).v;  break;
+    case FCVT_H_WU:  // ui32 ->f16
+      output.result = ui32_to_f16((uint32_t)input.src1).v;  break;
+    case FCVT_S_W:  // i32 ->f32
+      output.result = i32_to_f32((uint32_t)input.src1).v;  break;
+    case FCVT_S_WU:  // ui32 ->f32
+      output.result = ui32_to_f32((uint32_t)input.src1).v;  break;
+    case FCVT_D_W:  // i32 ->f64
+      output.result = i32_to_f64((uint32_t)input.src1).v;  break;
+    case FCVT_D_WU:  // ui32 ->f64
+      output.result = ui32_to_f64((uint32_t)input.src1).v;  break;
     default:
       printf("VFConvert Unsupported fuOpType %d\n", input.fuOpType);
       exit(1);
@@ -218,6 +223,20 @@ ElementOutput VGMFloatCvt::calculation_e64(ElementInput input) {
     //cross       
     case FCVT_H_D:  //f64 -> f16  
       output.result = f64_to_f16(i2f64((uint64_t)input.src1)).v;  break;
+    //i64/ui64->f64/f32/f16
+    case FCVT_H_L:  // i64 ->f16
+      output.result = i64_to_f16((uint64_t)input.src1).v;  break;
+    case FCVT_H_LU:  // ui64 ->f16
+      output.result = ui64_to_f16((uint64_t)input.src1).v;  break;
+    case FCVT_S_L:  // i64 ->f32
+      output.result = i64_to_f32((uint64_t)input.src1).v;  break;
+    case FCVT_S_LU:  // ui64 ->f32
+      output.result = ui64_to_f32((uint64_t)input.src1).v;  break;
+    case FCVT_D_L:  // i64 ->f64
+      output.result = i64_to_f64((uint64_t)input.src1).v;  break;
+    case FCVT_D_LU:  // ui64 ->f64
+      output.result = ui64_to_f64((uint64_t)input.src1).v;  break;
+    //i32/ui32->f64/f32/f16
     default:
       printf("VFConvert Unsupported fuOpType %d\n", input.fuOpType);
       exit(1);
